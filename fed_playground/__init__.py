@@ -5,6 +5,7 @@ from .src.party import Party
 from .src.orchestrator import Orchestrator
 from .src.environment import Environment
 from .src.dataloader import DataLoader
+from .src.visualization import DivergencePlotter
 
 __all__ = [
     "EncryptionScheme",
@@ -17,5 +18,6 @@ __all__ = [
     "Party",
     "Orchestrator",
     "Environment",
-    "DataLoader"
+    "DataLoader",
+    "DivergencePlotter"
 ]

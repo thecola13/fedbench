@@ -8,13 +8,18 @@ class DataLoader:
     """
     def __init__(
         self, 
-        file_path: str, 
-        target_column: str, 
-        feature_columns: Optional[List[str]] = None
+        file_path: Optional[str] = None, 
+        target_column: str = "target", 
+        feature_columns: Optional[List[str]] = None,
+        dataframe: Optional[pd.DataFrame] = None
     ):
         self.file_path = file_path
         self.target_column = target_column
         self.feature_columns = feature_columns
+        self.dataframe = dataframe
+        
+        if self.file_path is None and self.dataframe is None:
+             raise ValueError("Must provide either file_path or dataframe.")
         
     def load(self) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -23,7 +28,9 @@ class DataLoader:
         """
         # Read the file
         # Check extension or assume CSV
-        if self.file_path.endswith('.csv'):
+        if self.dataframe is not None:
+             df = self.dataframe.copy()
+        elif self.file_path.endswith('.csv'):
             df = pd.read_csv(self.file_path)
         else:
             # Fallback to csv or raise error. 

@@ -46,6 +46,24 @@ loader = DataLoader('data.csv', target_column='target')
 env = Environment(..., data_loader=loader)
 ```
 
+## Analyzing Divergence
+
+You can analyze how the federated models diverge from a global model using `plot_divergence.py`.
+
+### Modes
+1. **Instances Diff**: Compare divergence for different numbers of instances (with fixed data per instance).
+   ```bash
+   python plot_divergence.py --data-path test_data.csv --features feature_0 feature_1 --target target --instances-diff --rounds 10
+   ```
+2. **Data Diff**: Compare divergence for different amounts of training data (with fixed number of instances).
+   ```bash
+   python plot_divergence.py --data-path test_data.csv --features feature_0 feature_1 --target target --data-diff --rounds 10
+   ```
+3. **Fixed Data**: Compare divergence with a total capped number of data points distributed among instances.
+   ```bash
+   python plot_divergence.py --data-path test_data.csv --features feature_0 feature_1 --target target --fixed-data --total-data-points 500 --rounds 10
+   ```
+
 ## Extending
 
 ### Adding a new Encryption Scheme
