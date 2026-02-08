@@ -1,5 +1,19 @@
-import numpy as np
+"""
+Example script demonstrating basic usage of the Federated Learning Playground.
+
+This script shows how to:
+- Set up a federated learning environment
+- Use either synthetic data or load from CSV
+- Run a simulation with multiple parties
+- Track global model performance over rounds
+"""
+
+import sys
 import os
+# Add parent directory to path to import fed_playground
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import numpy as np
 from fed_playground import Environment, NoEncryption, MeanAggregation, LinearRegressionModel, ClosedFormLinearRegressionModel, DataLoader
 
 def main():
@@ -10,9 +24,11 @@ def main():
     rounds = 5
     
     # Check for data
-    data_file = 'test_data.csv'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_file = os.path.join(script_dir, 'test_data.csv')
+    
     if not os.path.exists(data_file):
-        print(f"File {data_file} not found. Please run 'python create_csv.py' first or I will generate defaults internally.")
+        print(f"File {data_file} not found. Using internal data generation...")
         data_loader = None
         n_features = 5
         n_samples = 100

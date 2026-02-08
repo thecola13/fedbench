@@ -133,10 +133,28 @@ class Environment:
         else:
             self.history['global_loss'].append(None)
 
-    def run_simulation(self, rounds: int = 10):
+    def run_simulation(self, rounds: int = 10, test_data: tuple = None):
+        """
+        Runs the federated learning simulation for the specified number of rounds.
+        
+        Args:
+            rounds: Number of FL rounds to execute
+            test_data: Optional tuple of (X_test, y_test) for global evaluation.
+                      If not provided, uses the test set created during setup.
+        
+        Returns:
+            dict: History containing 'global_loss' and 'party_loss' for each round
+        """
         self.setup()
+        
+        # Override test data if provided
+        if test_data is not None:
+            self.test_data = test_data
+        
         for r in range(rounds):
             self.run_round()
             print(f"Round {r+1}/{rounds} - "
                   f"Avg Party Loss: {self.history['party_loss'][-1]:.4f}, "
                   f"Global Test Loss: {self.history['global_loss'][-1]}")
+        
+        return self.history

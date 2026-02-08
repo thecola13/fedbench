@@ -15,7 +15,7 @@ from fed_playground import (
     DataLoader,
     Environment,
     NoEncryption,
-    DivergencePlotter
+    DivergenceVisualizer
 )
 
 def vprint(msg, verbosity, level=1):
@@ -200,8 +200,8 @@ def main(args):
     )
     
     vprint(f"Train size: {len(X_train)}, Test size: {len(X_test)}", args.verbosity)
-    
-    plotter = DivergencePlotter(save_dir=args.save_path)
+
+    plotter = DivergenceVisualizer(save_dir=args.save_path)
     
     # Common args for experiment
     exp_args = {

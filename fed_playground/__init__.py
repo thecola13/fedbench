@@ -5,7 +5,13 @@ from .src.party import Party
 from .src.orchestrator import Orchestrator
 from .src.environment import Environment
 from .src.dataloader import DataLoader
-from .src.visualization import DivergencePlotter
+from .src.visualization import (
+    Visualizer,
+    DivergenceVisualizer,
+    TrainingHistoryVisualizer,
+    ComparisonVisualizer,
+    DivergencePlotter  # Legacy alias
+)
 
 __all__ = [
     "EncryptionScheme",
@@ -19,5 +25,9 @@ __all__ = [
     "Orchestrator",
     "Environment",
     "DataLoader",
-    "DivergencePlotter"
+    "Visualizer",
+    "DivergenceVisualizer",
+    "TrainingHistoryVisualizer",
+    "ComparisonVisualizer",
+    "DivergencePlotter"  # Legacy alias
 ]
