@@ -469,6 +469,153 @@ class MLPRegressorModel(Model):
         return float(np.mean((y - self.predict(X)) ** 2))
 
 
+class MLPClassifierModel(Model):
+    """Single-hidden-layer MLP classifier with softmax output (pure NumPy).
+
+    Architecture: ``input_dim → hidden_dim → n_classes`` with ReLU hidden
+    activation and softmax output.  Trained via mini-batch SGD with
+    cross-entropy loss.
+
+    :meth:`evaluate` returns **accuracy** (fraction correct) rather than
+    MSE, making it suitable for classification tasks such as MNIST.
+
+    Parameters are flattened as
+    ``[W1 (input_dim × hidden_dim), b1 (hidden_dim,),
+       W2 (hidden_dim × n_classes), b2 (n_classes,)]``.
+
+    Args:
+        input_dim: Number of input features.
+        hidden_dim: Width of the hidden layer (default ``64``).
+        n_classes: Number of output classes (default ``10``).
+        learning_rate: SGD step size (default ``0.01``).
+        epochs: Passes over the local data per :meth:`train` call (default ``3``).
+        batch_size: Mini-batch size (default ``64``).
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int = 64,
+        n_classes: int = 10,
+        learning_rate: float = 0.01,
+        epochs: int = 3,
+        batch_size: int = 64,
+    ) -> None:
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.n_classes = n_classes
+        self.lr = learning_rate
+        self.epochs = epochs
+        self.batch_size = batch_size
+        rng = np.random.default_rng(0)
+        self.W1: np.ndarray = rng.normal(
+            0, np.sqrt(2.0 / input_dim), (input_dim, hidden_dim)
+        )
+        self.b1: np.ndarray = np.zeros(hidden_dim)
+        self.W2: np.ndarray = rng.normal(
+            0, np.sqrt(2.0 / hidden_dim), (hidden_dim, n_classes)
+        )
+        self.b2: np.ndarray = np.zeros(n_classes)
+
+    @staticmethod
+    def _softmax(z: np.ndarray) -> np.ndarray:
+        z_stable = z - z.max(axis=1, keepdims=True)
+        exp = np.exp(z_stable)
+        return exp / exp.sum(axis=1, keepdims=True)
+
+    def _forward(
+        self, X: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        h_pre = X @ self.W1 + self.b1
+        h = np.maximum(0.0, h_pre)
+        probs = self._softmax(h @ self.W2 + self.b2)
+        return h_pre, h, probs
+
+    def train(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Train with mini-batch SGD and cross-entropy loss.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, input_dim)``.
+            y: Integer class labels of shape ``(n_samples,)``
+                with values in ``{0, …, n_classes - 1}``.
+        """
+        n = X.shape[0]
+        if n == 0:
+            return
+        Y = np.zeros((n, self.n_classes))
+        Y[np.arange(n), y.astype(int)] = 1.0
+
+        rng = np.random.default_rng()
+        for _ in range(self.epochs):
+            perm = rng.permutation(n)
+            for start in range(0, n, self.batch_size):
+                idx = perm[start : start + self.batch_size]
+                Xb, Yb = X[idx], Y[idx]
+                nb = Xb.shape[0]
+                h_pre, h, probs = self._forward(Xb)
+                d_out = (probs - Yb) / nb           # (nb, n_classes)
+                dW2 = h.T @ d_out                   # (hidden_dim, n_classes)
+                db2 = d_out.sum(axis=0)
+                d_h = (d_out @ self.W2.T) * (h_pre > 0)  # ReLU mask
+                dW1 = Xb.T @ d_h
+                db1 = d_h.sum(axis=0)
+                self.W1 -= self.lr * dW1
+                self.b1 -= self.lr * db1
+                self.W2 -= self.lr * dW2
+                self.b2 -= self.lr * db2
+
+    def get_parameters(self) -> np.ndarray:
+        """Return all parameters as a single flat array."""
+        return np.concatenate(
+            [self.W1.ravel(), self.b1, self.W2.ravel(), self.b2]
+        )
+
+    def set_parameters(self, params: np.ndarray) -> None:
+        """Load all parameters from a flat array.
+
+        Args:
+            params: 1-D array produced by :meth:`get_parameters`.
+        """
+        d, h, c = self.input_dim, self.hidden_dim, self.n_classes
+        idx = 0
+        self.W1 = params[idx : idx + d * h].reshape(d, h).copy()
+        idx += d * h
+        self.b1 = params[idx : idx + h].copy()
+        idx += h
+        self.W2 = params[idx : idx + h * c].reshape(h, c).copy()
+        idx += h * c
+        self.b2 = params[idx : idx + c].copy()
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Return the predicted class index for each sample.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, input_dim)``.
+
+        Returns:
+            Integer class predictions of shape ``(n_samples,)``.
+        """
+        _, _, probs = self._forward(X)
+        return probs.argmax(axis=1).astype(float)
+
+    def evaluate(self, X: np.ndarray, y: np.ndarray) -> float:
+        """Compute classification accuracy.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, input_dim)``.
+            y: True integer class labels of shape ``(n_samples,)``.
+
+        Returns:
+            Accuracy in ``[0, 1]``.
+
+        Raises:
+            ValueError: If *X* contains zero samples.
+        """
+        if X.shape[0] == 0:
+            raise ValueError("Cannot evaluate on an empty dataset.")
+        return float(np.mean(self.predict(X) == y.astype(int)))
+
+
 class ClosedFormLinearRegressionModel(Model):
     """Linear regression via the normal equation (closed-form solution).
 
