@@ -441,7 +441,7 @@ release (see [`CITATION.cff`](CITATION.cff) for machine-readable metadata):
 @software{fed_playground,
   title   = {fed-playground: a modular pure-NumPy federated learning
              simulation and benchmark framework},
-  author  = {{fed-playground contributors}},
+  author  = {Colaci, Luca},
   year    = {2026},
   version = {0.2.1},
   doi     = {10.5281/zenodo.20735432},

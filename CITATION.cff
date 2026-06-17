@@ -7,7 +7,9 @@ message: >-
   using the metadata from this file.
 type: software
 authors:
-  - name: fed-playground contributors
+  - family-names: Colaci
+    given-names: Luca
+    orcid: "https://orcid.org/0009-0005-8572-8723"
 repository-code: "https://github.com/thecola13/fed-playground"
 abstract: >-
   A dependency-light, pure-NumPy federated learning testbed

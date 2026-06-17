@@ -8,7 +8,7 @@ version = "0.2.1"
 description = "A modular, pure-NumPy federated learning simulation and benchmark framework for research and education"
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "fed-playground contributors" }]
+authors = [{ name = "Luca Colaci" }]
 requires-python = ">=3.11,<3.13"
 keywords = [
     "federated-learning",
