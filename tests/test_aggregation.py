@@ -4,9 +4,11 @@ import numpy as np
 import pytest
 
 from fed_playground.src.aggregation import (
+    BulyanAggregation,
     GeometricMedianAggregation,
     KrumAggregation,
     MeanAggregation,
+    MedianOfMeansAggregation,
 )
 from fed_playground.src.encryption import AdditiveSecretSharing, NoEncryption
 
@@ -126,5 +128,66 @@ class TestGeometricMedianAggregation:
     def test_rejects_masking_scheme(self):
         with pytest.raises(ValueError, match="masks"):
             GeometricMedianAggregation().aggregate(
+                [np.ones(2), np.ones(2)], AdditiveSecretSharing(seed=0)
+            )
+
+
+class TestBulyanAggregation:
+    def setup_method(self):
+        self.scheme = NoEncryption()
+
+    def test_robust_to_single_outlier(self):
+        honest, outlier = _clustered_with_outlier()
+        result = BulyanAggregation(n_byzantine=1).aggregate(honest + [outlier], self.scheme)
+        assert np.linalg.norm(result - np.array([1.0, 1.0])) < 0.5
+
+    def test_robust_to_two_outliers(self):
+        # 9 honest near [2,2] + 2 Byzantine; n=11 >= 4f+3 with f=2.
+        rng = np.random.default_rng(0)
+        honest = [np.array([2.0, 2.0]) + 0.1 * rng.standard_normal(2) for _ in range(9)]
+        byz = [np.array([200.0, -200.0]), np.array([-150.0, 300.0])]
+        result = BulyanAggregation(n_byzantine=2).aggregate(honest + byz, self.scheme)
+        assert np.linalg.norm(result - np.array([2.0, 2.0])) < 0.5
+
+    def test_empty_raises(self):
+        with pytest.raises(ValueError, match="empty"):
+            BulyanAggregation().aggregate([], self.scheme)
+
+    def test_rejects_masking_scheme(self):
+        with pytest.raises(ValueError, match="masks"):
+            BulyanAggregation().aggregate(
+                [np.ones(2)] * 4, AdditiveSecretSharing(seed=0)
+            )
+
+
+class TestMedianOfMeansAggregation:
+    def setup_method(self):
+        self.scheme = NoEncryption()
+
+    def test_robust_to_outlier(self):
+        honest, outlier = _clustered_with_outlier()
+        result = MedianOfMeansAggregation(n_buckets=5).aggregate(
+            honest + [outlier], self.scheme
+        )
+        assert np.linalg.norm(result - np.array([1.0, 1.0])) < 0.6
+
+    def test_identical_updates_return_that_point(self):
+        p = np.array([3.0, -1.0, 4.0])
+        result = MedianOfMeansAggregation(n_buckets=3).aggregate([p, p, p, p], self.scheme)
+        np.testing.assert_array_almost_equal(result, p)
+
+    def test_buckets_clamped_to_party_count(self):
+        a, b = np.array([1.0, 1.0]), np.array([3.0, 3.0])
+        # n_buckets=10 but only 2 parties -> 2 buckets -> median of the two means.
+        result = MedianOfMeansAggregation(n_buckets=10).aggregate([a, b], self.scheme)
+        np.testing.assert_array_almost_equal(result, np.array([2.0, 2.0]))
+
+    def test_empty_raises(self):
+        with pytest.raises(ValueError, match="empty"):
+            MedianOfMeansAggregation().aggregate([], self.scheme)
+
+    def test_rejects_masking_scheme(self):
+        with pytest.raises(ValueError, match="masks"):
+            MedianOfMeansAggregation().aggregate(
                 [np.ones(2), np.ones(2)], AdditiveSecretSharing(seed=0)
             )

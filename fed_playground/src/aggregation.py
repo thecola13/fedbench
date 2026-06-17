@@ -42,6 +42,23 @@ def _stack_plaintext(
     return np.stack(arrays, axis=0)
 
 
+def _krum_scores(stacked: np.ndarray, n_byzantine: int) -> np.ndarray:
+    """Krum score per update: sum of the closest ``n - f - 2`` squared distances.
+
+    Lower is better — a low score means the update sits in a dense cluster and
+    is therefore unlikely to be an adversarial outlier.
+    """
+    n = stacked.shape[0]
+    diff = stacked[:, None, :] - stacked[None, :, :]
+    sq_dist = np.sum(diff * diff, axis=-1)  # (n, n)
+    n_neighbours = max(1, n - n_byzantine - 2)
+    scores = np.empty(n)
+    for i in range(n):
+        others = np.delete(sq_dist[i], i)
+        scores[i] = np.sort(others)[:n_neighbours].sum()
+    return scores
+
+
 class AggregationStrategy(abc.ABC):
     """Abstract base class for model aggregation strategies."""
 
@@ -263,18 +280,7 @@ class KrumAggregation(AggregationStrategy):
             # Not enough updates to form a neighbourhood; fall back to the mean.
             return stacked.mean(axis=0)
 
-        # Pairwise squared Euclidean distances.
-        diff = stacked[:, None, :] - stacked[None, :, :]
-        sq_dist = np.sum(diff * diff, axis=-1)  # (n, n)
-
-        # Each update's score: sum of the closest n - f - 2 neighbour distances.
-        n_neighbours = max(1, n - self.n_byzantine - 2)
-        scores = np.empty(n)
-        for i in range(n):
-            others = np.delete(sq_dist[i], i)
-            nearest = np.sort(others)[:n_neighbours]
-            scores[i] = nearest.sum()
-
+        scores = _krum_scores(stacked, self.n_byzantine)
         n_sel = min(self.n_selected, n)
         chosen = np.argsort(scores)[:n_sel]
         return stacked[chosen].mean(axis=0)
@@ -343,3 +349,141 @@ class GeometricMedianAggregation(AggregationStrategy):
                 break
             v = v_new
         return v
+
+
+class BulyanAggregation(AggregationStrategy):
+    """Strong Byzantine-robust aggregation via Bulyan (Krum + trimmed mean).
+
+    Reference: El Mhamdi, Guerraoui & Rouault, "The Hidden Vulnerability of
+    Distributed Learning in Byzantium", ICML 2018.
+
+    Bulyan closes a loophole in Krum: a single Krum-selected update can still be
+    nudged far along one coordinate by a clever attacker.  It runs in two stages:
+
+    1. **Selection** — recursively apply Krum to pick ``m = n - 2f`` candidate
+       updates (select the Krum-best, remove it, repeat), discarding the most
+       outlying updates.
+    2. **Coordinate-wise trimmed mean** — over the selected set, for each
+       coordinate keep the ``β = m - 2f`` values closest to that coordinate's
+       median and average them, bounding any single dimension's corruption.
+
+    The guarantee requires ``n ≥ 4f + 3``.  With fewer parties this clamps the
+    selection/averaging counts to stay well-defined (degrading gracefully toward
+    a coordinate-wise median).
+
+    Requires plaintext (numpy) updates; incompatible with additive-masking
+    schemes (``is_linear_only``).
+
+    Args:
+        n_byzantine: Assumed number of Byzantine parties ``f`` (default ``1``).
+    """
+
+    def __init__(self, n_byzantine: int = 1) -> None:
+        if n_byzantine < 0:
+            raise ValueError("n_byzantine must be >= 0.")
+        self.n_byzantine = n_byzantine
+
+    def aggregate(
+        self,
+        encrypted_models: list[Any],
+        encryption_scheme: EncryptionScheme,
+    ) -> Any:
+        """Run Bulyan selection + coordinate-wise trimmed mean.
+
+        Args:
+            encrypted_models: Non-empty list of numpy parameter vectors.
+            encryption_scheme: Active encryption scheme.
+
+        Returns:
+            The Bulyan-aggregated parameter vector.
+
+        Raises:
+            ValueError: If *encrypted_models* is empty or the scheme masks updates.
+        """
+        if not encrypted_models:
+            raise ValueError("encrypted_models must not be empty.")
+        _require_plaintext_updates("BulyanAggregation", encryption_scheme)
+
+        stacked = _stack_plaintext(encrypted_models, encryption_scheme)
+        n = stacked.shape[0]
+        f = self.n_byzantine
+        m = max(1, n - 2 * f)  # selection-set size
+
+        # Stage 1: recursive Krum selection.
+        remaining = list(range(n))
+        selected: list[int] = []
+        while len(selected) < m and remaining:
+            sub = stacked[remaining]
+            if sub.shape[0] <= 2:
+                selected.extend(remaining)
+                break
+            scores = _krum_scores(sub, f)
+            best_local = int(np.argmin(scores))
+            selected.append(remaining.pop(best_local))
+        sel = stacked[selected]  # (m', n_params)
+
+        # Stage 2: coordinate-wise trimmed mean over the selected set.
+        beta = max(1, sel.shape[0] - 2 * f)
+        median = np.median(sel, axis=0)
+        # Indices of the beta values closest to the median, per coordinate.
+        order = np.argsort(np.abs(sel - median), axis=0)[:beta]
+        closest = np.take_along_axis(sel, order, axis=0)
+        return closest.mean(axis=0)
+
+
+class MedianOfMeansAggregation(AggregationStrategy):
+    """Robust aggregation via the median-of-means estimator.
+
+    References: Nemirovski & Yudin 1983; Lugosi & Mendelson, "Mean estimation
+    and regression under heavy-tailed distributions: a survey", 2019.
+
+    Partitions the party updates into ``n_buckets`` groups, averages each group,
+    then takes the coordinate-wise **median of the bucket means**.  Averaging
+    within buckets reduces variance (sub-Gaussian concentration even for
+    heavy-tailed updates); the outer median discards buckets contaminated by
+    Byzantine parties.  Robust as long as a majority of buckets are clean — i.e.
+    ``n_buckets > 2f`` for ``f`` adversaries.
+
+    Requires plaintext (numpy) updates; incompatible with additive-masking
+    schemes (``is_linear_only``).
+
+    Args:
+        n_buckets: Number of buckets ``k`` (default ``5``); clamped to the party
+            count.  Choose ``k > 2f`` to tolerate ``f`` Byzantine parties.
+        seed: RNG seed for the random partition (default ``0``).
+    """
+
+    def __init__(self, n_buckets: int = 5, seed: int = 0) -> None:
+        if n_buckets < 1:
+            raise ValueError("n_buckets must be >= 1.")
+        self.n_buckets = n_buckets
+        self.seed = seed
+
+    def aggregate(
+        self,
+        encrypted_models: list[Any],
+        encryption_scheme: EncryptionScheme,
+    ) -> Any:
+        """Average within random buckets, then take the coordinate-wise median.
+
+        Args:
+            encrypted_models: Non-empty list of numpy parameter vectors.
+            encryption_scheme: Active encryption scheme.
+
+        Returns:
+            The median-of-means parameter vector.
+
+        Raises:
+            ValueError: If *encrypted_models* is empty or the scheme masks updates.
+        """
+        if not encrypted_models:
+            raise ValueError("encrypted_models must not be empty.")
+        _require_plaintext_updates("MedianOfMeansAggregation", encryption_scheme)
+
+        stacked = _stack_plaintext(encrypted_models, encryption_scheme)
+        n = stacked.shape[0]
+        k = min(self.n_buckets, n)
+        rng = np.random.default_rng(self.seed)
+        buckets = np.array_split(rng.permutation(n), k)
+        bucket_means = np.stack([stacked[idx].mean(axis=0) for idx in buckets], axis=0)
+        return np.median(bucket_means, axis=0)

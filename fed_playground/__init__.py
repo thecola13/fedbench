@@ -1,9 +1,11 @@
 from .src.aggregation import (
     AggregationStrategy,
+    BulyanAggregation,
     GeometricMedianAggregation,
     KrumAggregation,
     MeanAggregation,
     MedianAggregation,
+    MedianOfMeansAggregation,
     TrimmedMeanAggregation,
 )
 from .src.dataloader import DataLoader
@@ -42,6 +44,7 @@ from .src.visualization import (
 __all__ = [
     "AdditiveSecretSharing",
     "AggregationStrategy",
+    "BulyanAggregation",
     "ClosedFormLinearRegressionModel",
     "ComparisonVisualizer",
     "DataLoader",
@@ -61,6 +64,7 @@ __all__ = [
     "MLPRegressorModel",
     "MeanAggregation",
     "MedianAggregation",
+    "MedianOfMeansAggregation",
     "Model",
     "NoEncryption",
     "Orchestrator",
