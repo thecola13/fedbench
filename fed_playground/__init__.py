@@ -11,7 +11,9 @@ from .src.encryption import (
     AdditiveSecretSharing,
     EncryptionScheme,
     GaussianDPEncryption,
+    LaplaceDPEncryption,
     NoEncryption,
+    PairwiseMaskingEncryption,
 )
 from .src.environment import Environment
 from .src.models import (
@@ -48,6 +50,7 @@ __all__ = [
     "GaussianDPEncryption",
     "GeometricMedianAggregation",
     "KrumAggregation",
+    "LaplaceDPEncryption",
     "LassoRegressionModel",
     "LinearRegressionModel",
     "LogisticRegressionModel",
@@ -58,6 +61,7 @@ __all__ = [
     "Model",
     "NoEncryption",
     "Orchestrator",
+    "PairwiseMaskingEncryption",
     "Party",
     "RidgeRegressionModel",
     "SVMModel",
