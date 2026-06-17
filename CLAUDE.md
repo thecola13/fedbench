@@ -28,25 +28,28 @@ Set `FED_LOG_LEVEL=INFO` (or `DEBUG`) to see round-by-round progress; the packag
 
 ## Architecture
 
-A pure-NumPy federated learning simulator built around the **strategy pattern**: the four concerns — model, aggregation, encryption, data loading — are independent ABCs you swap without touching the rest. Everything public is re-exported from `fed_playground/__init__.py`; import from there, not from `fed_playground.src.*`.
+A pure-NumPy federated learning simulator built around the **strategy pattern**: the swappable concerns — model, aggregation, encryption, attack, data loading — are independent ABCs you swap without touching the rest. Everything public is re-exported from `fed_playground/__init__.py`; import from there, not from `fed_playground.src.*`. `__all__` doubles as the name registry the benchmark engine and CLI resolve against via `getattr`.
 
 **Control flow per round** (`Environment` → `Orchestrator` → `Party`):
 1. `Orchestrator.distribute_model` broadcasts global params to every registered `Party`.
 2. Each `Party.train_local_model` trains its local `Model` on its data shard, then encrypts its params.
-3. `Orchestrator.aggregate_models` collects encrypted updates and combines them via the `AggregationStrategy`, producing the new global params.
+3. `Orchestrator.aggregate_models` collects encrypted updates, optionally lets an `Attack` poison the `byzantine_ids` subset, then combines them via the `AggregationStrategy`, producing the new global params.
 
 `Environment` is the high-level driver most users touch — it generates/splits data, instantiates one `model_class` per party plus a global model, wires up the orchestrator, and exposes `run_simulation`/`run_round`. Training history lands in `self.history`.
 
 **The three swappable ABCs** (each in `fed_playground/src/`), plus a `Visualizer` ABC in `visualization.py`:
 - `Model` (`models.py`) — `train(X, y)` / `predict(X)`; `evaluate` defaults to MSE on the ABC, classifiers/GLMs override it (accuracy, Poisson deviance). Implementations: linear (GD/closed-form/ridge), logistic, MLP regressor/classifier, plus research models `SVMModel` (Pegasos), `LassoRegressionModel`, `ElasticNetRegressionModel`, `PoissonRegressionModel`. All carry params as a single NumPy array so aggregation is model-agnostic.
-- `AggregationStrategy` (`aggregation.py`) — `aggregate(...)`. `MeanAggregation` (FedAvg) is the default; Byzantine-robust options: `MedianAggregation`, `TrimmedMeanAggregation`, `KrumAggregation`, `BulyanAggregation`, `GeometricMedianAggregation`, `MedianOfMeansAggregation`. Shared helpers `_require_plaintext_updates` / `_stack_plaintext` / `_krum_scores` live at module top.
+- `AggregationStrategy` (`aggregation.py`) — `aggregate(...)`. `MeanAggregation` (FedAvg) is the default; Byzantine-robust options: `MedianAggregation`, `TrimmedMeanAggregation`, `KrumAggregation`, `BulyanAggregation`, `GeometricMedianAggregation`, `MedianOfMeansAggregation`, `CenteredClippingAggregation`. Shared helpers `_require_plaintext_updates` / `_stack_plaintext` / `_krum_scores` live at module top.
 - `EncryptionScheme` (`encryption.py`) — `encrypt` / `decrypt` / `aggregate`. The scheme's `aggregate` runs over *encrypted* params, so the orchestrator and every party must share the same scheme instance type. `NoEncryption` (baseline), `GaussianDPEncryption`, `LaplaceDPEncryption`, `AdditiveSecretSharing`, `PairwiseMaskingEncryption`.
+- `Attack` (`attacks.py`) — `corrupt(updates, byzantine_ids)` operates on the *whole* round's plaintext updates (so omniscient attacks read honest stats). `NoAttack`, `SignFlipAttack`, `GaussianAttack`, `IPMAttack` (Xie 2020), `ALittleIsEnoughAttack` (Baruch 2019). Wired via `Environment(attack=..., n_byzantine=...)`.
 
 Because encryption defines its own `aggregate`, encrypted aggregation and the `AggregationStrategy` are two distinct layers — don't conflate them.
 
 **`is_linear_only` flag** (class attr on `EncryptionScheme`, default `False`): masking schemes (`AdditiveSecretSharing`, `PairwiseMaskingEncryption`) set it `True` because individual shares are meaningless — only their sum reconstructs. The order/distance-based aggregators check it and raise rather than silently computing garbage over masked shares. Only `MeanAggregation` is sound over masked updates.
 
-New research classes cite their source in the docstring; see the README "Research-grounded components" table. Each has a runnable `examples/example_*.py` demo (examples are gitignored but present on disk).
+New research classes cite their source in the docstring; see the README "Research-grounded components" table. Each has a runnable `examples/example_*.py` demo (now tracked; only `examples/thesis_*` stay private).
+
+**Benchmark layer** (`benchmark.py`, `cli.py`): `run_benchmark(...)` Cartesian-sweeps (model × aggregation × encryption × attack × n_byzantine) into a tidy DataFrame, reusing `Environment` per cell; incompatible `is_linear_only`×order-statistic cells are recorded as NaN, not raised. `leaderboard(...)` renders a Markdown pivot. The `fedbench` CLI (`fedbench run config.toml`) drives it from TOML configs in `benchmarks/`; `dirichlet_partition` (`utils_data.py`) gives non-IID shards. `Environment`/`run_benchmark` take a `seed` for reproducibility.
 
 ## Conventions
 

@@ -37,25 +37,27 @@ to answer questions such as "what happens to model divergence as I increase the
 number of parties?" or "how does closed-form averaging compare to gradient
 descent in a federated setting?"
 
-Out of the box the framework ships with:
+Out of the box the framework ships **five swappable component types**, each an
+ABC with multiple pure-NumPy implementations:
 
-- **Models** — gradient descent linear regression, closed-form linear
-  regression, L2-regularised ridge regression, logistic regression, and a
-  single-hidden-layer MLP (all pure NumPy).
-- **Aggregation strategies** — FedAvg (mean), coordinate-wise median, and
-  trimmed mean for Byzantine robustness.
-- **Encryption schemes** — passthrough baseline, Gaussian differential-privacy
-  noise, and additive secret sharing; plus an interface compatible with
-  [Concrete ML](https://github.com/zama-ai/concrete-ml) when the optional
-  `[fhe]` extra is installed.
-- **Four visualizers** — training history curves, model comparison bar charts,
-  and divergence analysis plots with per-party breakdowns.
+- **Models** — linear regression (gradient-descent / closed-form / ridge),
+  logistic regression, MLP regressor & classifier, plus SVM (Pegasos), Lasso,
+  ElasticNet, Poisson GLM and Huber regression.
+- **Aggregation strategies** — FedAvg (mean), plus Byzantine-robust median,
+  trimmed mean, Krum / Multi-Krum, Bulyan, geometric median (RFA),
+  median-of-means and centered clipping.
+- **Encryption schemes** — passthrough baseline, Gaussian & Laplace local DP,
+  additive secret sharing and pairwise-masking secure aggregation; FHE-ready via
+  the optional `[fhe]` extra ([Concrete ML](https://github.com/zama-ai/concrete-ml)).
+- **Attacks** — sign-flip, Gaussian, IPM and A-Little-Is-Enough Byzantine
+  poisoning, for stress-testing robust aggregation.
+- **Visualizers** — training-history curves, model comparison, divergence
+  analysis and DP privacy/utility frontiers.
 
 ### Research-grounded components
 
-Beyond the baselines above, the framework ships implementations of published
-algorithms across every strategy type.  Each class names its source in its
-docstring:
+Most of the classes above implement published algorithms; each cites its source
+in its docstring:
 
 | Type | Class | Reference |
 |---|---|---|
@@ -111,27 +113,29 @@ operates entirely in plaintext — which is correct for educational purposes.
 ## Project Structure
 
 ```
-fed_env/
-├── fed_playground/             # Installable Python package
-│   ├── __init__.py             # Public API — import everything from here
+fed-playground/
+├── fed_playground/             # Installable Python package (import from here)
+│   ├── __init__.py             # Public API + name registry (__all__)
 │   └── src/
-│       ├── aggregation.py      # AggregationStrategy ABC + MeanAggregation
-│       ├── dataloader.py       # DataLoader: CSV / DataFrame / numpy inputs
-│       ├── encryption.py       # EncryptionScheme ABC + NoEncryption baseline
+│       ├── models.py           # Model ABC + 11 regressors/classifiers
+│       ├── aggregation.py      # AggregationStrategy ABC + FedAvg & 7 robust rules
+│       ├── encryption.py       # EncryptionScheme ABC + DP / secret-sharing / masking
+│       ├── attacks.py          # Attack ABC + Byzantine poisoning strategies
 │       ├── environment.py      # Environment: high-level simulation driver
-│       ├── models.py           # Model ABC + Linear / ClosedForm implementations
-│       ├── orchestrator.py     # Orchestrator: broadcast + aggregate
+│       ├── orchestrator.py     # Orchestrator: broadcast + aggregate (+ attack hook)
 │       ├── party.py            # Party: local training + encrypted updates
-│       ├── utils_data.py       # Synthetic data generation and splitting
-│       └── visualization.py   # TrainingHistory / Comparison / Divergence plots
-├── examples/
-│   ├── basic_simulation.py     # Minimal end-to-end FL demo
-│   ├── visualization_demo.py   # All three visualizers in one script
-│   ├── divergence_analysis.py  # CLI tool for divergence experiments
-│   └── test_data.csv           # Bundled 200-sample toy dataset
-├── tests/                      # pytest test suite (mirrors src/ layout)
-├── .env.example                # Template for environment variables
-├── pyproject.toml              # Project metadata, dependencies, tool config
+│       ├── dataloader.py       # DataLoader + load_dataset (synthetic/sklearn/openml/csv)
+│       ├── utils_data.py       # IID + Dirichlet non-IID partitioners
+│       ├── benchmark.py        # run_benchmark grid sweep + Markdown leaderboard
+│       ├── cli.py              # `fedbench` CLI (run / list-components)
+│       └── visualization.py    # Training / Comparison / Divergence / PrivacyUtility plots
+├── examples/                   # Runnable demos (example_*.py) + bundled toy CSV
+├── benchmarks/                 # TOML configs + generated leaderboards + STUDY.md
+├── docs/                       # MkDocs site (api / extending / study) + design specs
+├── tests/                      # pytest suite (mirrors src/ layout)
+├── .github/workflows/          # CI, docs deploy, PyPI release
+├── pyproject.toml              # Metadata, dependencies, tool config
+├── mkdocs.yml                  # Docs site config
 └── LICENSE                     # MIT
 ```
 
@@ -148,9 +152,11 @@ Core Python dependencies (installed automatically):
 | Package | Purpose |
 |---|---|
 | `numpy ≥ 1.24` | Numerical computing |
-| `pandas ≥ 2.0` | Data loading and manipulation |
+| `pandas ≥ 2.0` | Data loading and benchmark tables |
 | `matplotlib ≥ 3.7` | Visualizations |
-| `tqdm ≥ 4.65` | Progress bars in example scripts |
+
+Optional extras: `[examples]` (scikit-learn, tqdm), `[dev]` (pytest, ruff, black,
+mypy), `[docs]` (mkdocs-material, mkdocstrings), `[fhe]` (concrete-ml).
 
 ---
 
@@ -310,7 +316,7 @@ viz_save.plot(data=..., filename="training.png")
 import numpy as np
 from fed_playground import Model, Environment, NoEncryption, MeanAggregation
 
-class RidgeRegressionModel(Model):
+class MyRidgeModel(Model):  # the framework already ships RidgeRegressionModel
     def __init__(self, input_dim: int, alpha: float = 0.01) -> None:
         self.input_dim = input_dim
         self.alpha = alpha
@@ -332,7 +338,7 @@ env = Environment(
     n_parties=4,
     n_features=5,
     n_samples=200,
-    model_class=RidgeRegressionModel,
+    model_class=MyRidgeModel,
     model_params={"alpha": 0.1},
 )
 env.run_simulation(rounds=5)
@@ -375,17 +381,13 @@ uv run pytest tests/test_environment.py
 uv run pytest --cov=fed_playground --cov-report=term-missing
 ```
 
-A passing run looks like:
+A passing run covers the whole suite (≈160 tests across the `src/` modules):
 
 ```
-tests/test_aggregation.py    .....
-tests/test_dataloader.py     ............
-tests/test_encryption.py     ......
-tests/test_environment.py    .......
-tests/test_models.py         ...........
-tests/test_orchestrator.py   .....
-tests/test_party.py          .......
-tests/test_utils_data.py     .......
+tests/test_aggregation.py ...  tests/test_attacks.py ...  tests/test_benchmark.py ...
+tests/test_dataloader.py ...   tests/test_encryption.py ...  tests/test_environment.py ...
+tests/test_models.py ...       tests/test_orchestrator.py ...  tests/test_party.py ...
+tests/test_phase2.py ...       tests/test_utils_data.py ...  tests/test_visualization.py ...
 ```
 
 ---

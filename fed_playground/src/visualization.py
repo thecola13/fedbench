@@ -27,7 +27,7 @@ class Visualizer(abc.ABC):
         self.figsize = figsize
 
     @abc.abstractmethod
-    def plot(self, data: Any, **kwargs) -> Figure:
+    def plot(self, data: Any, **kwargs: Any) -> Figure:
         """
         Create a plot from the provided data.
 
@@ -70,7 +70,7 @@ class TrainingHistoryVisualizer(Visualizer):
         xlabel: str = "Round",
         ylabel: str = "Value",
         filename: str = "training_history.png",
-        **kwargs,
+        **kwargs: Any,
     ) -> Figure:
         """
         Plot training history metrics.
@@ -118,7 +118,7 @@ class ComparisonVisualizer(Visualizer):
         xlabel: str = "Model",
         ylabel: str = "Metric",
         filename: str = "comparison.png",
-        **kwargs,
+        **kwargs: Any,
     ) -> Figure:
         """
         Create a bar plot comparing metrics across models.
@@ -451,7 +451,7 @@ class PrivacyUtilityVisualizer(Visualizer):
         filename: str = "privacy_utility.png",
         baseline: float | None = None,
         lower_is_better: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> Figure:
         """Plot utility vs ε for one or more DP mechanisms.
 

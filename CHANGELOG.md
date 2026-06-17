@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1]
+
+### Changed
+- Documentation pass: refreshed the README component roster, project-structure
+  tree and dependency table (tqdm is an `[examples]` extra, not core); renamed
+  the custom-model example to avoid colliding with the built-in
+  `RidgeRegressionModel`; brought `CLAUDE.md` up to date with the `Attack` type,
+  benchmark engine and `fedbench` CLI.
+- Annotated `**kwargs: Any` on the visualizer `plot` signatures, so the docs
+  site builds warning-free.
+
 ## [0.2.0]
 
 ### Added
