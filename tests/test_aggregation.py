@@ -5,6 +5,7 @@ import pytest
 
 from fed_playground.src.aggregation import (
     BulyanAggregation,
+    CenteredClippingAggregation,
     GeometricMedianAggregation,
     KrumAggregation,
     MeanAggregation,
@@ -189,5 +190,43 @@ class TestMedianOfMeansAggregation:
     def test_rejects_masking_scheme(self):
         with pytest.raises(ValueError, match="masks"):
             MedianOfMeansAggregation().aggregate(
+                [np.ones(2), np.ones(2)], AdditiveSecretSharing(seed=0)
+            )
+
+
+class TestCenteredClippingAggregation:
+    def setup_method(self):
+        self.scheme = NoEncryption()
+
+    def test_robust_to_outlier(self):
+        honest, outlier = _clustered_with_outlier()
+        result = CenteredClippingAggregation(clip_radius=1.0, n_iters=5).aggregate(
+            honest + [outlier], self.scheme
+        )
+        assert np.linalg.norm(result - np.array([1.0, 1.0])) < 0.5
+
+    def test_converges_to_mean_on_clean_data(self):
+        # With no outliers and a generous radius, clipping is inactive and the
+        # iteration converges to the arithmetic mean (distinguishes it from median).
+        rng = np.random.default_rng(0)
+        pts = [rng.standard_normal(3) for _ in range(8)]
+        result = CenteredClippingAggregation(clip_radius=100.0, n_iters=20).aggregate(
+            pts, self.scheme
+        )
+        np.testing.assert_allclose(result, np.mean(pts, axis=0), atol=1e-6)
+
+    def test_empty_raises(self):
+        with pytest.raises(ValueError, match="empty"):
+            CenteredClippingAggregation().aggregate([], self.scheme)
+
+    def test_invalid_params_raise(self):
+        with pytest.raises(ValueError, match="clip_radius"):
+            CenteredClippingAggregation(clip_radius=0.0)
+        with pytest.raises(ValueError, match="n_iters"):
+            CenteredClippingAggregation(n_iters=0)
+
+    def test_rejects_masking_scheme(self):
+        with pytest.raises(ValueError, match="masks"):
+            CenteredClippingAggregation().aggregate(
                 [np.ones(2), np.ones(2)], AdditiveSecretSharing(seed=0)
             )

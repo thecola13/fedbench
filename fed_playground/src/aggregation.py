@@ -487,3 +487,72 @@ class MedianOfMeansAggregation(AggregationStrategy):
         buckets = np.array_split(rng.permutation(n), k)
         bucket_means = np.stack([stacked[idx].mean(axis=0) for idx in buckets], axis=0)
         return np.median(bucket_means, axis=0)
+
+
+class CenteredClippingAggregation(AggregationStrategy):
+    """Byzantine-robust aggregation via iterative centered clipping.
+
+    Reference: Karimireddy, He & Jaggi, "Learning from History for Byzantine
+    Robust Optimization", ICML 2021.
+
+    Starting from a robust center ``v`` (the coordinate-wise median here, a
+    parameter-free stand-in for the momentum/previous-round estimate the paper
+    warm-starts from), repeatedly refine
+
+        ``v ← v + (1/n) Σ_i (x_i - v)·min(1, τ / ‖x_i - v‖)``
+
+    Each update's pull on the center is clipped to norm ``τ``, so a Byzantine
+    update arbitrarily far from ``v`` contributes at most ``τ`` — bounding its
+    influence without discarding any honest update.  Distinct from selection
+    (Krum/Bulyan) and order statistics (median/MoM): it is a smooth, clipping
+    based estimator.
+
+    Choose ``clip_radius`` on the order of the *honest* update norms: too small
+    over-clips and slows convergence, too large lets outliers through.
+
+    Requires plaintext (numpy) updates; incompatible with additive-masking
+    schemes (``is_linear_only``).
+
+    Args:
+        clip_radius: Clipping threshold ``τ`` on each update's distance to the
+            center (default ``1.0``).
+        n_iters: Number of refinement iterations ``L`` (default ``3``).
+    """
+
+    def __init__(self, clip_radius: float = 1.0, n_iters: int = 3) -> None:
+        if clip_radius <= 0:
+            raise ValueError("clip_radius must be > 0.")
+        if n_iters < 1:
+            raise ValueError("n_iters must be >= 1.")
+        self.clip_radius = clip_radius
+        self.n_iters = n_iters
+
+    def aggregate(
+        self,
+        encrypted_models: list[Any],
+        encryption_scheme: EncryptionScheme,
+    ) -> Any:
+        """Refine a robust center by iterative centered clipping.
+
+        Args:
+            encrypted_models: Non-empty list of numpy parameter vectors.
+            encryption_scheme: Active encryption scheme.
+
+        Returns:
+            The centered-clipping aggregate as a numpy array.
+
+        Raises:
+            ValueError: If *encrypted_models* is empty or the scheme masks updates.
+        """
+        if not encrypted_models:
+            raise ValueError("encrypted_models must not be empty.")
+        _require_plaintext_updates("CenteredClippingAggregation", encryption_scheme)
+
+        stacked = _stack_plaintext(encrypted_models, encryption_scheme)
+        v = np.median(stacked, axis=0)  # robust warm-start
+        for _ in range(self.n_iters):
+            diff = stacked - v
+            norms = np.linalg.norm(diff, axis=1, keepdims=True)
+            scale = np.minimum(1.0, self.clip_radius / np.maximum(norms, 1e-12))
+            v = v + (scale * diff).mean(axis=0)
+        return v

@@ -58,6 +58,7 @@ docstring:
 | Aggregation | `BulyanAggregation` | El Mhamdi et al., *The Hidden Vulnerability of Distributed Learning in Byzantium*, ICML 2018 |
 | Aggregation | `GeometricMedianAggregation` (RFA) | Pillutla et al., *Robust Aggregation for Federated Learning*, IEEE TSP 2022 |
 | Aggregation | `MedianOfMeansAggregation` | Nemirovski & Yudin 1983; Lugosi & Mendelson 2019 |
+| Aggregation | `CenteredClippingAggregation` | Karimireddy, He & Jaggi, *Learning from History for Byzantine Robust Optimization*, ICML 2021 |
 | Model | `SVMModel` | Shalev-Shwartz et al., *Pegasos*, Math. Programming 2011 |
 | Model | `LassoRegressionModel` | Tibshirani 1996; Friedman, Hastie & Tibshirani 2010 |
 | Model | `ElasticNetRegressionModel` | Zou & Hastie, *Elastic Net*, JRSS-B 2005 |

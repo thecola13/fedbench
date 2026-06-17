@@ -1,6 +1,7 @@
 from .src.aggregation import (
     AggregationStrategy,
     BulyanAggregation,
+    CenteredClippingAggregation,
     GeometricMedianAggregation,
     KrumAggregation,
     MeanAggregation,
@@ -47,6 +48,7 @@ __all__ = [
     "AdditiveSecretSharing",
     "AggregationStrategy",
     "BulyanAggregation",
+    "CenteredClippingAggregation",
     "ClosedFormLinearRegressionModel",
     "ComparisonVisualizer",
     "DataLoader",
