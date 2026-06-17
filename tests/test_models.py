@@ -5,8 +5,10 @@ import pytest
 
 from fed_playground.src.models import (
     ClosedFormLinearRegressionModel,
+    ElasticNetRegressionModel,
     LassoRegressionModel,
     LinearRegressionModel,
+    PoissonRegressionModel,
     SVMModel,
 )
 from fed_playground.src.utils_data import generate_linear_data
@@ -88,6 +90,82 @@ class TestLassoRegressionModel:
 
     def test_empty_train_no_crash(self):
         LassoRegressionModel(input_dim=3).train(np.zeros((0, 3)), np.zeros(0))
+
+
+class TestElasticNetRegressionModel:
+    def _sparse_problem(self, seed=0):
+        rng = np.random.default_rng(seed)
+        X = rng.standard_normal((300, 6))
+        y = 3.0 * X[:, 0] - 2.0 * X[:, 1] + 0.01 * rng.standard_normal(300)
+        return X, y
+
+    def test_recovers_ols_when_alpha_near_zero(self):
+        X, y = generate_linear_data(n_samples=200, n_features=4, noise=0.01, random_seed=0)
+        en = ElasticNetRegressionModel(input_dim=4, alpha=1e-6, l1_ratio=0.5)
+        en.train(X, y)
+        ols = ClosedFormLinearRegressionModel(input_dim=4)
+        ols.train(X, y)
+        np.testing.assert_allclose(en.predict(X), ols.predict(X), atol=0.05)
+
+    def test_pure_l1_induces_exact_sparsity(self):
+        X, y = self._sparse_problem()
+        en = ElasticNetRegressionModel(input_dim=6, alpha=0.3, l1_ratio=1.0)
+        en.train(X, y)
+        assert np.all(np.abs(en.weights[2:]) < 1e-8)  # irrelevant features zeroed
+
+    def test_pure_l2_shrinks_without_exact_zeros(self):
+        X, y = self._sparse_problem()
+        en = ElasticNetRegressionModel(input_dim=6, alpha=0.5, l1_ratio=0.0)
+        en.train(X, y)
+        # Ridge-like: irrelevant weights are small but generically not exactly 0.
+        assert np.all(np.abs(en.weights[2:]) < 0.2)
+        assert np.any(np.abs(en.weights[2:]) > 0.0)
+
+    def test_invalid_l1_ratio_raises(self):
+        with pytest.raises(ValueError, match="l1_ratio"):
+            ElasticNetRegressionModel(input_dim=3, l1_ratio=1.5)
+
+
+class TestPoissonRegressionModel:
+    def _count_data(self, n=400, d=3, seed=0):
+        rng = np.random.default_rng(seed)
+        X = 0.5 * rng.standard_normal((n, d))
+        true_w = np.array([0.8, -0.5, 0.3])[:d]
+        rate = np.exp(X @ true_w + 0.2)
+        y = rng.poisson(rate).astype(float)
+        return X, y
+
+    def test_predictions_are_non_negative(self):
+        X, y = self._count_data()
+        model = PoissonRegressionModel(input_dim=X.shape[1], epochs=100)
+        model.train(X, y)
+        assert np.all(model.predict(X) >= 0.0)
+
+    def test_training_reduces_deviance(self):
+        X, y = self._count_data()
+        model = PoissonRegressionModel(input_dim=X.shape[1], epochs=200)
+        before = model.evaluate(X, y)
+        model.train(X, y)
+        after = model.evaluate(X, y)
+        assert after < before
+
+    def test_recovers_rate_on_synthetic_counts(self):
+        X, y = self._count_data(n=2000, seed=2)
+        model = PoissonRegressionModel(input_dim=X.shape[1], learning_rate=0.05, epochs=500)
+        model.train(X, y)
+        # Fitted mean rate should track the empirical mean count.
+        assert abs(model.predict(X).mean() - y.mean()) < 0.1
+
+    def test_parameter_roundtrip(self):
+        X, y = self._count_data()
+        model = PoissonRegressionModel(input_dim=X.shape[1])
+        model.train(X, y)
+        clone = PoissonRegressionModel(input_dim=X.shape[1])
+        clone.set_parameters(model.get_parameters())
+        np.testing.assert_array_almost_equal(clone.predict(X), model.predict(X))
+
+    def test_empty_train_no_crash(self):
+        PoissonRegressionModel(input_dim=3).train(np.zeros((0, 3)), np.zeros(0))
 
 # ---------------------------------------------------------------------------
 # Shared helpers

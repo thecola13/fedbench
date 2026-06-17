@@ -18,12 +18,14 @@ from .src.encryption import (
 from .src.environment import Environment
 from .src.models import (
     ClosedFormLinearRegressionModel,
+    ElasticNetRegressionModel,
     LassoRegressionModel,
     LinearRegressionModel,
     LogisticRegressionModel,
     MLPClassifierModel,
     MLPRegressorModel,
     Model,
+    PoissonRegressionModel,
     RidgeRegressionModel,
     SVMModel,
 )
@@ -45,6 +47,7 @@ __all__ = [
     "DataLoader",
     "DivergencePlotter",  # Legacy alias
     "DivergenceVisualizer",
+    "ElasticNetRegressionModel",
     "EncryptionScheme",
     "Environment",
     "GaussianDPEncryption",
@@ -63,6 +66,7 @@ __all__ = [
     "Orchestrator",
     "PairwiseMaskingEncryption",
     "Party",
+    "PoissonRegressionModel",
     "RidgeRegressionModel",
     "SVMModel",
     "TrainingHistoryVisualizer",

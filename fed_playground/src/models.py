@@ -849,3 +849,218 @@ class LassoRegressionModel(Model):
             Predicted values of shape ``(n_samples,)``.
         """
         return X @ self.weights + self.bias
+
+
+class ElasticNetRegressionModel(Model):
+    """Elastic-net regression: blended L1/L2 penalty via coordinate descent.
+
+    Reference: Zou & Hastie, "Regularization and variable selection via the
+    elastic net", JRSS-B 2005.
+
+    Minimises ``(1/2n)‖y - Xw - b‖² + α·ρ‖w‖₁ + (α(1-ρ)/2)‖w‖²`` where ``ρ`` is
+    the L1 ratio.  The L1 part yields sparsity; the L2 part stabilises selection
+    among correlated features (the "grouping effect") that pure LASSO handles
+    poorly.  Coordinate update with soft-thresholding::
+
+        w_j = S((1/n) xⱼ·r_j, α·ρ) / ((1/n)‖xⱼ‖² + α(1-ρ))
+
+    Recovers LASSO at ``l1_ratio=1`` and ridge-like shrinkage at ``l1_ratio=0``.
+    The intercept is unpenalised.  Parameters are stored as ``[weights..., bias]``.
+
+    Args:
+        input_dim: Number of input features.
+        alpha: Overall regularisation strength (default ``0.1``).
+        l1_ratio: Mix between L1 (``1.0``) and L2 (``0.0``) penalties (default ``0.5``).
+        max_iter: Maximum coordinate-descent sweeps (default ``1000``).
+        tol: Convergence tolerance on the max coefficient change (default ``1e-6``).
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        alpha: float = 0.1,
+        l1_ratio: float = 0.5,
+        max_iter: int = 1000,
+        tol: float = 1e-6,
+    ) -> None:
+        if alpha < 0:
+            raise ValueError("alpha must be >= 0.")
+        if not 0.0 <= l1_ratio <= 1.0:
+            raise ValueError("l1_ratio must be in [0, 1].")
+        self.input_dim = input_dim
+        self.alpha = alpha
+        self.l1_ratio = l1_ratio
+        self.max_iter = max_iter
+        self.tol = tol
+        self.weights: np.ndarray = np.zeros(input_dim)
+        self.bias: float = 0.0
+
+    @staticmethod
+    def _soft_threshold(rho: float, gamma: float) -> float:
+        if rho > gamma:
+            return rho - gamma
+        if rho < -gamma:
+            return rho + gamma
+        return 0.0
+
+    def train(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Fit by cyclic coordinate descent with an L1/L2-blended penalty.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, n_features)``.
+            y: Target vector of shape ``(n_samples,)``.
+        """
+        n = X.shape[0]
+        if n == 0:
+            return
+        col_sq = (X * X).sum(axis=0) / n
+        l1 = self.alpha * self.l1_ratio
+        l2 = self.alpha * (1.0 - self.l1_ratio)
+        for _ in range(self.max_iter):
+            max_change = 0.0
+            self.bias = float(np.mean(y - X @ self.weights))
+            for j in range(self.input_dim):
+                denom = col_sq[j] + l2
+                if denom == 0.0:
+                    continue
+                r_j = y - self.bias - X @ self.weights + self.weights[j] * X[:, j]
+                rho_j = float(X[:, j] @ r_j) / n
+                new_wj = self._soft_threshold(rho_j, l1) / denom
+                max_change = max(max_change, abs(new_wj - self.weights[j]))
+                self.weights[j] = new_wj
+            if max_change < self.tol:
+                break
+
+    def get_parameters(self) -> np.ndarray:
+        """Return ``[weights..., bias]`` as a flat array."""
+        return np.concatenate([self.weights, [self.bias]])
+
+    def set_parameters(self, params: np.ndarray) -> None:
+        """Load weights and bias from a flat parameter array.
+
+        Args:
+            params: 1-D array of length ``input_dim + 1``.
+        """
+        self.weights = params[:-1].copy()
+        self.bias = float(params[-1])
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Compute linear predictions ``X·weights + bias``.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, n_features)``.
+
+        Returns:
+            Predicted values of shape ``(n_samples,)``.
+        """
+        return X @ self.weights + self.bias
+
+
+class PoissonRegressionModel(Model):
+    """Poisson regression (log-linear GLM) for non-negative count targets.
+
+    Reference: Nelder & Wedderburn, "Generalized Linear Models", JRSS-A 1972.
+
+    Models ``E[y | x] = exp(w·x + b)`` (the canonical log link for the Poisson
+    family) and fits by gradient descent on the negative log-likelihood, whose
+    gradient is the elegant ``(1/n) Xᵀ(μ - y)`` with ``μ = exp(w·x + b)``.
+    Suitable for rates/counts (events per unit), where ordinary least squares
+    would wrongly allow negative predictions.
+
+    :meth:`predict` returns the expected count ``μ ≥ 0``; :meth:`evaluate`
+    returns the **mean Poisson deviance** (the GLM-appropriate goodness-of-fit,
+    lower is better), not MSE.
+
+    Parameters are stored as ``[weights..., bias]``.
+
+    Args:
+        input_dim: Number of input features.
+        learning_rate: Gradient-descent step size (default ``0.01``).
+        epochs: Passes over the data per :meth:`train` call (default ``50``).
+        max_exponent: Clip on the linear predictor to avoid ``exp`` overflow
+            (default ``30.0``).
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        learning_rate: float = 0.01,
+        epochs: int = 50,
+        max_exponent: float = 30.0,
+    ) -> None:
+        self.input_dim = input_dim
+        self.lr = learning_rate
+        self.epochs = epochs
+        self.max_exponent = max_exponent
+        self.weights: np.ndarray = np.zeros(input_dim)
+        self.bias: float = 0.0
+
+    def _rate(self, X: np.ndarray) -> np.ndarray:
+        """Expected count ``μ = exp(clip(w·x + b))``."""
+        eta = np.clip(X @ self.weights + self.bias, -self.max_exponent, self.max_exponent)
+        return np.exp(eta)
+
+    def train(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Fit by gradient descent on the Poisson negative log-likelihood.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, n_features)``.
+            y: Non-negative count targets of shape ``(n_samples,)``.
+        """
+        n = X.shape[0]
+        if n == 0:
+            return
+        for _ in range(self.epochs):
+            mu = self._rate(X)
+            err = mu - y
+            self.weights -= self.lr * (X.T @ err) / n
+            self.bias -= self.lr * float(np.sum(err)) / n
+
+    def get_parameters(self) -> np.ndarray:
+        """Return ``[weights..., bias]`` as a flat array."""
+        return np.concatenate([self.weights, [self.bias]])
+
+    def set_parameters(self, params: np.ndarray) -> None:
+        """Load weights and bias from a flat parameter array.
+
+        Args:
+            params: 1-D array of length ``input_dim + 1``.
+        """
+        self.weights = params[:-1].copy()
+        self.bias = float(params[-1])
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Return the expected count ``μ = exp(w·x + b)`` (non-negative).
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, n_features)``.
+
+        Returns:
+            Predicted rates of shape ``(n_samples,)``.
+        """
+        return self._rate(X)
+
+    def evaluate(self, X: np.ndarray, y: np.ndarray) -> float:
+        """Compute the mean Poisson deviance (lower is better).
+
+        ``D = (2/n) Σ [ y·log(y/μ) - (y - μ) ]`` with the convention
+        ``y·log(y/μ) = 0`` when ``y = 0``.
+
+        Args:
+            X: Feature matrix of shape ``(n_samples, n_features)``.
+            y: True counts of shape ``(n_samples,)``.
+
+        Returns:
+            Mean Poisson deviance.
+
+        Raises:
+            ValueError: If *X* contains zero samples.
+        """
+        if X.shape[0] == 0:
+            raise ValueError("Cannot evaluate on an empty dataset.")
+        mu = np.maximum(self._rate(X), 1e-12)
+        # y*log(y/mu) -> 0 as y -> 0; guard the log there.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            term = np.where(y > 0, y * np.log(y / mu), 0.0)
+        deviance = 2.0 * np.mean(term - (y - mu))
+        return float(deviance)
