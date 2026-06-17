@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Sync dependencies
+        run: uv sync --extra dev --extra examples
+
+      # Lint + format gates (library and tests). ruff's `I` rule covers import
+      # sorting, so isort is intentionally not run here to avoid a redundant,
+      # conflicting gate.
+      - name: Lint (ruff)
+        run: uv run ruff check fed_playground tests
+
+      - name: Format check (black)
+        run: uv run black --check fed_playground tests
+
+      # Advisory: type-checking is being adopted gradually; failures don't block.
+      - name: Type check (mypy, advisory)
+        run: uv run mypy fed_playground
+        continue-on-error: true
+
+      - name: Tests
+        run: uv run pytest
+
+      - name: Smoke (run an example headless)
+        env:
+          MPLBACKEND: Agg
+        run: uv run python examples/example_byzantine_robust.py

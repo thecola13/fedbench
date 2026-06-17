@@ -5,16 +5,44 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fed-env"
 version = "0.1.0"
-description = "A modular federated learning simulation framework for research and education"
+description = "A modular, pure-NumPy federated learning simulation and benchmark framework for research and education"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "fed-env contributors" }]
 requires-python = ">=3.11,<3.13"
+keywords = [
+    "federated-learning",
+    "differential-privacy",
+    "secure-aggregation",
+    "byzantine-robustness",
+    "machine-learning",
+    "privacy",
+    "benchmark",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security :: Cryptography",
+    "Typing :: Typed",
+]
 dependencies = [
     "matplotlib>=3.7",
     "numpy>=1.24",
     "pandas>=2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/your-org/fed-env"
+Repository = "https://github.com/your-org/fed-env"
+Issues = "https://github.com/your-org/fed-env/issues"
+Changelog = "https://github.com/your-org/fed-env/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 fhe = [
@@ -36,6 +64,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fed_playground*"]
+
+[tool.setuptools.package-data]
+fed_playground = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

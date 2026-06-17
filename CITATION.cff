@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: >-
+  fed-env: a modular pure-NumPy federated learning
+  simulation and benchmark framework
+message: >-
+  If you use this software in your research, please cite it
+  using the metadata from this file.
+type: software
+authors:
+  - name: fed-env contributors
+repository-code: "https://github.com/your-org/fed-env"
+abstract: >-
+  A dependency-light, pure-NumPy federated learning testbed
+  built on a strategy pattern: models, aggregation
+  strategies, encryption schemes, and visualizers are
+  independent, swappable components. It ships
+  research-grounded implementations of Byzantine-robust
+  aggregation (Krum, Bulyan, RFA geometric median,
+  median-of-means, centered clipping), robust and penalized
+  models (SVM/Pegasos, Lasso, ElasticNet, Poisson GLM,
+  Huber), and privacy mechanisms (Laplace/Gaussian local DP,
+  pairwise-masking secure aggregation), for studying the
+  privacy x robustness x utility trade-off.
+keywords:
+  - federated learning
+  - differential privacy
+  - secure aggregation
+  - byzantine robustness
+  - machine learning
+license: MIT
+version: 0.1.0

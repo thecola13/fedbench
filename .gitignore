@@ -80,9 +80,10 @@ test_concrete_ml_results/
 encrypted_fl_results/
 
 # =============================================================
-# Private / personal example scripts (not for publication)
+# Private research scripts only (read external THESIS_DATA_DIR).
+# Published example_*.py / demos ARE tracked.
 # =============================================================
-examples/
+examples/thesis_*
 
 # =============================================================
 # Scratch / temp files
