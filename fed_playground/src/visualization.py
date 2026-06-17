@@ -1,8 +1,9 @@
 import abc
 import os
-import numpy as np
+from typing import Any
+
 import matplotlib.pyplot as plt
-from typing import Dict, List, Any, Optional, Tuple
+import numpy as np
 from matplotlib.figure import Figure
 
 
@@ -12,7 +13,9 @@ class Visualizer(abc.ABC):
     Follows the library pattern of ABC-based interfaces.
     """
 
-    def __init__(self, save_dir: Optional[str] = None, figsize: Tuple[int, int] = (10, 6)):
+    def __init__(
+        self, save_dir: str | None = None, figsize: tuple[int, int] = (10, 6)
+    ) -> None:
         """
         Initialize visualizer.
 
@@ -48,7 +51,7 @@ class Visualizer(abc.ABC):
         if self.save_dir:
             os.makedirs(self.save_dir, exist_ok=True)
             filepath = os.path.join(self.save_dir, filename)
-            fig.savefig(filepath, bbox_inches='tight', dpi=300)
+            fig.savefig(filepath, bbox_inches="tight", dpi=300)
             plt.close(fig)
         else:
             plt.show()
@@ -62,12 +65,12 @@ class TrainingHistoryVisualizer(Visualizer):
 
     def plot(
         self,
-        data: Dict[str, List[float]],
+        data: dict[str, list[float]],
         title: str = "Training History",
         xlabel: str = "Round",
         ylabel: str = "Value",
         filename: str = "training_history.png",
-        **kwargs
+        **kwargs,
     ) -> Figure:
         """
         Plot training history metrics.
@@ -88,7 +91,7 @@ class TrainingHistoryVisualizer(Visualizer):
 
         for metric_name, values in data.items():
             rounds = range(1, len(values) + 1)
-            ax.plot(rounds, values, marker='o', label=metric_name, **kwargs)
+            ax.plot(rounds, values, marker="o", label=metric_name, **kwargs)
 
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
@@ -110,12 +113,12 @@ class ComparisonVisualizer(Visualizer):
 
     def plot(
         self,
-        data: Dict[str, float],
+        data: dict[str, float],
         title: str = "Model Comparison",
         xlabel: str = "Model",
         ylabel: str = "Metric",
         filename: str = "comparison.png",
-        **kwargs
+        **kwargs,
     ) -> Figure:
         """
         Create a bar plot comparing metrics across models.
@@ -143,17 +146,17 @@ class ComparisonVisualizer(Visualizer):
         for bar in bars:
             height = bar.get_height()
             ax.text(
-                bar.get_x() + bar.get_width() / 2.,
+                bar.get_x() + bar.get_width() / 2.0,
                 height,
-                f'{height:.4f}',
-                ha='center',
-                va='bottom'
+                f"{height:.4f}",
+                ha="center",
+                va="bottom",
             )
 
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)
-        ax.grid(axis='y', alpha=0.3)
+        ax.grid(axis="y", alpha=0.3)
 
         plt.tight_layout()
         self.save_or_show(fig, filename)
@@ -167,7 +170,9 @@ class DivergenceVisualizer(Visualizer):
     Specialized for federated learning experiments comparing model parameters and performance.
     """
 
-    def __init__(self, save_dir: Optional[str] = None, figsize: Tuple[int, int] = (15, 10)):
+    def __init__(
+        self, save_dir: str | None = None, figsize: tuple[int, int] = (15, 10)
+    ) -> None:
         """
         Initialize divergence visualizer.
 
@@ -176,9 +181,9 @@ class DivergenceVisualizer(Visualizer):
             figsize: Figure size (default larger for complex plots).
         """
         super().__init__(save_dir, figsize)
-        self.results: Dict[Any, List[Dict]] = {}
+        self.results: dict[Any, list[dict]] = {}
 
-    def add_result(self, x_value: Any, metrics_per_round: List[Dict]) -> None:
+    def add_result(self, x_value: Any, metrics_per_round: list[dict]) -> None:
         """
         Add experimental results for a specific x-axis value.
 
@@ -207,8 +212,8 @@ class DivergenceVisualizer(Visualizer):
         x_label: str = "X Value",
         title_suffix: str = "Experiment",
         show_local_models: bool = True,
-        metric_configs: Optional[List[Tuple[str, str, str]]] = None
-    ) -> List[Figure]:
+        metric_configs: list[tuple[str, str, str]] | None = None,
+    ) -> list[Figure]:
         """
         Generate divergence plots for all metrics.
 
@@ -240,7 +245,7 @@ class DivergenceVisualizer(Visualizer):
                 title=f"{label} vs {title_suffix}",
                 filename=fname,
                 x_label=x_label,
-                show_local_models=show_local_models
+                show_local_models=show_local_models,
             )
             figures.append(fig)
 
@@ -253,7 +258,7 @@ class DivergenceVisualizer(Visualizer):
         title: str,
         filename: str,
         x_label: str,
-        show_local_models: bool
+        show_local_models: bool,
     ) -> Figure:
         """
         Create a divergence plot for a single metric.
@@ -277,7 +282,8 @@ class DivergenceVisualizer(Visualizer):
         agg_series = self._collect_metric_series(x_values, metric_key, use_local=False)
         local_series = (
             self._collect_metric_series(x_values, metric_key, use_local=True)
-            if show_local_models else None
+            if show_local_models
+            else None
         )
 
         # Collect MSE values for line plots
@@ -298,7 +304,7 @@ class DivergenceVisualizer(Visualizer):
         )
         for box in bp_agg["boxes"]:
             box.set_alpha(0.7)
-            box.set_facecolor('lightblue')
+            box.set_facecolor("lightblue")
 
         if show_local_models and local_series:
             positions_local = base + width / 2
@@ -311,7 +317,7 @@ class DivergenceVisualizer(Visualizer):
             )
             for box in bp_local["boxes"]:
                 box.set_alpha(0.4)
-                box.set_facecolor('orange')
+                box.set_facecolor("orange")
 
         # Configure boxplot axis
         ax_box.set_xticks(base)
@@ -325,22 +331,32 @@ class DivergenceVisualizer(Visualizer):
         ax_mse = ax_box.twinx()
         ax_mse.set_ylabel("MSE")
 
-        line_gen, = ax_mse.plot(
-            base, gen_mse,
-            color='green', marker='x', linestyle='--',
-            label='Centralized MSE', linewidth=2
+        (line_gen,) = ax_mse.plot(
+            base,
+            gen_mse,
+            color="green",
+            marker="x",
+            linestyle="--",
+            label="Centralized MSE",
+            linewidth=2,
         )
-        line_agg, = ax_mse.plot(
-            base, agg_mse,
-            color='blue', marker='o', linestyle=':',
-            label='Federated MSE', linewidth=2
+        (line_agg,) = ax_mse.plot(
+            base,
+            agg_mse,
+            color="blue",
+            marker="o",
+            linestyle=":",
+            label="Federated MSE",
+            linewidth=2,
         )
 
         # Build legend
         handles = [
-            plt.Line2D([0], [0], color='lightblue', lw=6, alpha=0.7, label='Federated Model'),
+            plt.Line2D(
+                [0], [0], color="lightblue", lw=6, alpha=0.7, label="Federated Model"
+            ),
             line_gen,
-            line_agg
+            line_agg,
         ]
 
         if show_local_models:
@@ -352,17 +368,27 @@ class DivergenceVisualizer(Visualizer):
                         all_local.extend(r["local_mse"])
                 local_mse.append(np.mean(all_local) if all_local else np.nan)
 
-            line_local, = ax_mse.plot(
-                base, local_mse,
-                color='orange', marker='s', linestyle=':',
-                label='Local Models MSE', linewidth=2
+            (line_local,) = ax_mse.plot(
+                base,
+                local_mse,
+                color="orange",
+                marker="s",
+                linestyle=":",
+                label="Local Models MSE",
+                linewidth=2,
             )
-            handles.extend([
-                plt.Line2D([0], [0], color='orange', lw=6, alpha=0.4, label='Local Models'),
-                line_local
-            ])
+            handles.extend(
+                [
+                    plt.Line2D(
+                        [0], [0], color="orange", lw=6, alpha=0.4, label="Local Models"
+                    ),
+                    line_local,
+                ]
+            )
 
-        ax_box.legend(handles=handles, loc='upper center', ncol=3, bbox_to_anchor=(0.5, -0.1))
+        ax_box.legend(
+            handles=handles, loc="upper center", ncol=3, bbox_to_anchor=(0.5, -0.1)
+        )
 
         plt.tight_layout()
         self.save_or_show(fig, filename)
@@ -370,11 +396,8 @@ class DivergenceVisualizer(Visualizer):
         return fig
 
     def _collect_metric_series(
-        self,
-        x_values: List[Any],
-        metric_key: str,
-        use_local: bool
-    ) -> List[List[float]]:
+        self, x_values: list[Any], metric_key: str, use_local: bool
+    ) -> list[list[float]]:
         """
         Collect metric values across x_values and rounds.
 
@@ -404,42 +427,77 @@ class DivergenceVisualizer(Visualizer):
 
         return series
 
-    def plot_single_metric(
+class PrivacyUtilityVisualizer(Visualizer):
+    """Plot the privacy/utility trade-off curve for differentially-private FL.
+
+    Visualises how model utility degrades as the privacy budget ``ε`` tightens —
+    the canonical figure of the DP-ML literature (e.g. Abadi et al., "Deep
+    Learning with Differential Privacy", ACM CCS 2016): utility on the y-axis
+    against ``ε`` on a logarithmic x-axis, with one line per mechanism and an
+    optional non-private baseline.
+
+    Smaller ``ε`` means stronger privacy and more noise, so utility curves
+    typically *worsen* to the left — the shape practitioners use to pick an
+    operating point.
+    """
+
+    def plot(
         self,
-        data: np.ndarray,
-        title: str = "Metric Distribution",
-        xlabel: str = "Model",
-        ylabel: str = "Value",
-        filename: str = "single_metric.png",
-        **kwargs
+        data: dict[str, dict[float, float]],
+        title: str = "Privacy-Utility Trade-off",
+        xlabel: str = "Privacy budget ε (log scale)",
+        ylabel: str = "Utility (e.g. test MSE or accuracy)",
+        filename: str = "privacy_utility.png",
+        baseline: float | None = None,
+        lower_is_better: bool = True,
+        **kwargs,
     ) -> Figure:
-        """
-        Plot a single metric distribution (convenience method).
+        """Plot utility vs ε for one or more DP mechanisms.
 
         Args:
-            data: 1D or 2D numpy array of metric values.
+            data: Mapping ``mechanism_name -> {epsilon: utility}``.  Example:
+                ``{"Laplace": {0.2: 74.0, 1.0: 3.0, 5.0: 0.13}}``.
             title: Plot title.
             xlabel: X-axis label.
             ylabel: Y-axis label.
             filename: Filename for saving.
-            **kwargs: Additional matplotlib parameters.
+            baseline: Optional non-private utility, drawn as a dashed reference line.
+            lower_is_better: If ``True`` annotate that lower utility is better
+                (MSE/deviance); set ``False`` for accuracy-style metrics.
+            **kwargs: Additional matplotlib line parameters.
 
         Returns:
             Matplotlib Figure object.
+
+        Raises:
+            ValueError: If *data* is empty.
         """
+        if not data:
+            raise ValueError("No data to plot. Provide at least one mechanism.")
+
         fig, ax = plt.subplots(figsize=self.figsize)
 
-        if data.ndim == 1:
-            # Single series bar plot
-            ax.bar(range(len(data)), data, **kwargs)
-        else:
-            # Multiple series boxplot
-            ax.boxplot(data.T, **kwargs)
+        for name, eps_to_util in data.items():
+            eps = sorted(eps_to_util)
+            utils = [eps_to_util[e] for e in eps]
+            ax.plot(eps, utils, marker="o", label=name, **kwargs)
 
+        if baseline is not None:
+            ax.axhline(
+                baseline,
+                color="grey",
+                linestyle="--",
+                linewidth=1.5,
+                label="No privacy (baseline)",
+            )
+
+        ax.set_xscale("log")
         ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
+        direction = "lower is better" if lower_is_better else "higher is better"
+        ax.set_ylabel(f"{ylabel}\n({direction})")
         ax.set_title(title)
-        ax.grid(axis='y', alpha=0.3)
+        ax.legend()
+        ax.grid(True, which="both", alpha=0.3)
 
         plt.tight_layout()
         self.save_or_show(fig, filename)

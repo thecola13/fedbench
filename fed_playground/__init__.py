@@ -37,6 +37,7 @@ from .src.visualization import (
     ComparisonVisualizer,
     DivergencePlotter,  # Legacy alias
     DivergenceVisualizer,
+    PrivacyUtilityVisualizer,
     TrainingHistoryVisualizer,
     Visualizer,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "PairwiseMaskingEncryption",
     "Party",
     "PoissonRegressionModel",
+    "PrivacyUtilityVisualizer",
     "RidgeRegressionModel",
     "SVMModel",
     "TrainingHistoryVisualizer",

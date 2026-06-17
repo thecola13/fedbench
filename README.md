@@ -46,6 +46,36 @@ Out of the box the framework ships with:
 - **Four visualizers** — training history curves, model comparison bar charts,
   and divergence analysis plots with per-party breakdowns.
 
+### Research-grounded components
+
+Beyond the baselines above, the framework ships implementations of published
+algorithms across every strategy type.  Each class names its source in its
+docstring:
+
+| Type | Class | Reference |
+|---|---|---|
+| Aggregation | `KrumAggregation` | Blanchard et al., *Byzantine-Tolerant Gradient Descent*, NeurIPS 2017 |
+| Aggregation | `BulyanAggregation` | El Mhamdi et al., *The Hidden Vulnerability of Distributed Learning in Byzantium*, ICML 2018 |
+| Aggregation | `GeometricMedianAggregation` (RFA) | Pillutla et al., *Robust Aggregation for Federated Learning*, IEEE TSP 2022 |
+| Aggregation | `MedianOfMeansAggregation` | Nemirovski & Yudin 1983; Lugosi & Mendelson 2019 |
+| Model | `SVMModel` | Shalev-Shwartz et al., *Pegasos*, Math. Programming 2011 |
+| Model | `LassoRegressionModel` | Tibshirani 1996; Friedman, Hastie & Tibshirani 2010 |
+| Model | `ElasticNetRegressionModel` | Zou & Hastie, *Elastic Net*, JRSS-B 2005 |
+| Model | `PoissonRegressionModel` | Nelder & Wedderburn, *GLMs*, JRSS-A 1972 |
+| Encryption | `LaplaceDPEncryption` | Dwork et al., *Calibrating Noise to Sensitivity*, TCC 2006 |
+| Encryption | `PairwiseMaskingEncryption` | Bonawitz et al., *Practical Secure Aggregation*, ACM CCS 2017 |
+| Visualizer | `PrivacyUtilityVisualizer` | Abadi et al., *Deep Learning with Differential Privacy*, ACM CCS 2016 |
+
+Robust aggregators and additive-masking schemes carry an `is_linear_only` flag:
+masking schemes (secret sharing, pairwise masks) hide individual updates, so
+order/distance-based aggregators (Krum, median, Bulyan, …) correctly refuse
+them — only linear aggregation (`MeanAggregation`) is sound over masked shares.
+
+Runnable demos for all of the above live in `examples/` (e.g.
+`example_byzantine_robust.py`, `example_svm_lasso.py`,
+`example_dp_and_secure_agg.py`, `example_elasticnet_poisson.py`,
+`example_bulyan_mom.py`, `example_privacy_utility_curve.py`).
+
 ### Optional: Fully Homomorphic Encryption (FHE)
 
 The `[fhe]` optional extra installs **Concrete ML** (Zama's FHE library).
