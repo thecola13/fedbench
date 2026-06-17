@@ -97,9 +97,7 @@ attacks = [{name="NoAttack"}, {name="SignFlipAttack", scale=10}]
 [output]
 results_csv = "CSV_PATH"
 leaderboard_md = "MD_PATH"
-""".replace(
-                "CSV_PATH", str(tmp_path / "out.csv")
-            ).replace(
+""".replace("CSV_PATH", str(tmp_path / "out.csv")).replace(
                 "MD_PATH", str(tmp_path / "out.md")
             )
         )
