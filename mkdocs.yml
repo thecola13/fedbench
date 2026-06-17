@@ -1,7 +1,7 @@
 site_name: fed-playground
 site_description: A modular, pure-NumPy federated learning simulation and benchmark framework
-site_url: https://fedbench.colaciluca.it/
-repo_url: https://github.com/thecola13/fedbench
+site_url: https://colaciluca.it/fed-playground/
+repo_url: https://github.com/thecola13/fed-playground
 exclude_docs: |
   specs/
 

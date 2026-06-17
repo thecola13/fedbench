@@ -2,12 +2,12 @@
 
 > A modular federated learning simulation framework for research and education.
 
-[![CI](https://github.com/thecola13/fedbench/actions/workflows/ci.yml/badge.svg)](https://github.com/thecola13/fedbench/actions/workflows/ci.yml)
+[![CI](https://github.com/thecola13/fed-playground/actions/workflows/ci.yml/badge.svg)](https://github.com/thecola13/fed-playground/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](pyproject.toml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Docs](https://img.shields.io/badge/docs-mkdocs--material-blue)](https://fedbench.colaciluca.it/)
+[![Docs](https://img.shields.io/badge/docs-mkdocs--material-blue)](https://colaciluca.it/fed-playground/)
 
 
 ## Table of Contents
@@ -163,8 +163,8 @@ the Python version and virtual environment automatically.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/thecola13/fedbench.git
-cd fedbench
+git clone https://github.com/thecola13/fed-playground.git
+cd fed-playground
 
 # 2. Install dependencies and create the virtual environment
 uv sync
@@ -195,8 +195,8 @@ pytest
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/thecola13/fedbench.git
-cd fedbench
+git clone https://github.com/thecola13/fed-playground.git
+cd fed-playground
 
 # 2. Create and activate a virtual environment
 python3.11 -m venv .venv
@@ -395,8 +395,8 @@ tests/test_utils_data.py     .......
 ### Setting up a dev environment
 
 ```bash
-git clone https://github.com/thecola13/fedbench.git
-cd fedbench
+git clone https://github.com/thecola13/fed-playground.git
+cd fed-playground
 uv sync --extra dev
 ```
 
