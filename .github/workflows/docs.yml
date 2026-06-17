@@ -1,15 +1,24 @@
 name: Docs
 
+# Build the MkDocs site and publish it via the official GitHub Pages Actions
+# pipeline (build_type "workflow"), not the legacy branch builder. Requires
+# repo Settings -> Pages -> Source = "GitHub Actions".
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write  # mkdocs gh-deploy pushes to the gh-pages branch
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +26,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --extra docs --extra examples
-      # Non-strict: griffe emits advisory docstring warnings on some pre-existing
-      # **kwargs signatures; they don't justify failing the docs deploy.
-      - run: uv run mkdocs gh-deploy --force
+      - run: uv run mkdocs build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
