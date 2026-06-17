@@ -72,6 +72,7 @@ ehthumbs.db
 # =============================================================
 # Generated outputs (not part of the library)
 # =============================================================
+site/
 results/
 demo_results/
 thesis_results/

@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from fed_playground.src.benchmark import leaderboard
-from fed_playground.src.cli import _classes, _instances, _lookup, run_config
+from fed_playground.src.cli import _classes, _instances, _lookup, main, run_config
 from fed_playground.src.dataloader import DataLoader, load_dataset
 from fed_playground.src.environment import Environment
 
@@ -108,3 +108,10 @@ leaderboard_md = "MD_PATH"
         df = pd.read_csv(csv_path)
         assert len(df) == 4  # 1 model x 2 agg x 1 enc x 2 attack x 1 nbyz
         assert (tmp_path / "out.md").read_text().strip().startswith("## tiny")
+
+    def test_list_components_groups_by_type(self, capsys):
+        assert main(["list-components"]) == 0
+        out = capsys.readouterr().out
+        assert "AggregationStrategy:" in out and "KrumAggregation" in out
+        assert "Attack:" in out and "IPMAttack" in out
+        assert "Model:" in out and "EncryptionScheme:" in out

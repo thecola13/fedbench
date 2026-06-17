@@ -84,16 +84,46 @@ def run_config(path: str | Path) -> Path:
     return csv_path
 
 
+def _print_components() -> None:
+    """List the swappable components addressable by name in a config."""
+    import inspect
+
+    buckets: dict[str, list[str]] = {}
+    for name in fp.__all__:
+        obj = getattr(fp, name)
+        if not inspect.isclass(obj):
+            continue
+        base = next(
+            (
+                b
+                for b in ("Model", "AggregationStrategy", "EncryptionScheme", "Attack")
+                if isinstance(getattr(fp, b, None), type)
+                and issubclass(obj, getattr(fp, b))
+                and obj is not getattr(fp, b)
+            ),
+            None,
+        )
+        if base:
+            buckets.setdefault(base, []).append(name)
+    for base in sorted(buckets):
+        print(f"\n{base}:")
+        for n in sorted(buckets[base]):
+            print(f"  {n}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="fedbench")
     sub = parser.add_subparsers(dest="cmd", required=True)
     run = sub.add_parser("run", help="run a benchmark config (TOML)")
     run.add_argument("config", help="path to a .toml experiment config")
+    sub.add_parser("list-components", help="list swappable components by type")
     args = parser.parse_args(argv)
 
     if args.cmd == "run":
         path = run_config(args.config)
         print(f"wrote {path} and its leaderboard")
+    elif args.cmd == "list-components":
+        _print_components()
     return 0
 
 

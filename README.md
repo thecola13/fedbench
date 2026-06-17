@@ -7,6 +7,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](pyproject.toml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Docs](https://img.shields.io/badge/docs-mkdocs--material-blue)](https://your-org.github.io/fed-env/)
 
 <!-- Badge/URL note: replace `your-org/fed-env` with the real GitHub path before publishing.
      A PyPI badge is added at first release (Phase 3). -->

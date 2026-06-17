@@ -1,0 +1,22 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # mkdocs gh-deploy pushes to the gh-pages branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra docs --extra examples
+      # Non-strict: griffe emits advisory docstring warnings on some pre-existing
+      # **kwargs signatures; they don't justify failing the docs deploy.
+      - run: uv run mkdocs gh-deploy --force

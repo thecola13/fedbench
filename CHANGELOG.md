@@ -4,9 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0]
 
 ### Added
+- **Docs site** (MkDocs Material + mkdocstrings, `[docs]` extra): API reference
+  auto-generated from docstrings, an "extending in ~20 lines" guide, and the
+  benchmark study. Deployed via GitHub Pages.
+- **`fedbench list-components`**: list swappable components grouped by ABC.
+- **Release workflows**: GitHub Pages docs deploy + PyPI Trusted-Publishing on tag.
+
+### Fixed
+- Packaging: added `fed_playground/src/__init__.py` so the `src` modules are
+  actually included in the built wheel (previously a PEP 420 namespace dir that
+  `setuptools.find` could omit).
+
 - **`fedbench` CLI** (`fedbench run config.toml`): declarative TOML experiments →
   results CSV + auto-generated Markdown leaderboard. Component params are TOML
   inline tables resolved against the public API.

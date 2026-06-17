@@ -52,7 +52,11 @@ def run_benchmark(
         encryptions: encryption scheme instances (default ``[NoEncryption()]``).
         attacks: attack instances (default ``[NoAttack()]``).
         n_byzantine: numbers of Byzantine parties to sweep (default ``(0,)``).
-        n_parties, rounds, n_features, n_samples: fixed simulation settings.
+        n_parties: parties per run.
+        rounds: federated rounds per run.
+        n_features: synthetic feature count (when no *data_loader*).
+        n_samples: synthetic sample count (when no *data_loader*).
+        seed: data/sim seed, threaded into every run for reproducibility.
         model_params: kwargs forwarded to every model.
         data_loader: optional shared dataset; when ``None`` each run uses the same
             seeded synthetic data, so rows are comparable.
@@ -117,7 +121,9 @@ def leaderboard(
 
     Args:
         df: results from :func:`run_benchmark`.
-        index/columns/values: pivot axes; defaults give an attack x defense matrix.
+        index: pivot row axis (default ``"aggregation"``).
+        columns: pivot column axis (default ``"attack"``).
+        values: cell metric (default ``"final_loss"``).
         title: optional heading rendered above the table.
 
     Returns:

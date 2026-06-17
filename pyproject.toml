@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fed-env"
-version = "0.1.0"
+version = "0.2.0"
 description = "A modular, pure-NumPy federated learning simulation and benchmark framework for research and education"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -54,6 +54,10 @@ fhe = [
 examples = [
     "scikit-learn>=1.3",
     "tqdm>=4.65",
+]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
 ]
 dev = [
     "pytest>=8.0",
