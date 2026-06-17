@@ -1,4 +1,4 @@
-# Extending fedbench
+# Extending fed-playground
 
 Every concern is an ABC. Subclass one, and the rest of the framework — the
 `Environment`, the benchmark engine, the CLI registry — picks it up for free.

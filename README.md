@@ -1,4 +1,4 @@
-# fedbench
+# fed-playground
 
 > A modular federated learning simulation framework for research and education.
 
@@ -26,7 +26,7 @@
 
 ## Overview
 
-**fedbench** is a pure-Python federated learning playground designed to make it
+**fed-playground** is a pure-Python federated learning playground designed to make it
 easy to prototype, analyse, and teach the core ideas behind federated learning
 (FL) — without requiring a cluster or real network infrastructure.
 
@@ -215,7 +215,7 @@ pip install -e ".[fhe]"
 Verify the installation:
 
 ```bash
-python -c "import fed_playground; print('fedbench installed successfully')"
+python -c "import fed_playground; print('fed-playground installed successfully')"
 ```
 
 ---
